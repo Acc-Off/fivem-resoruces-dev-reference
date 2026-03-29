@@ -1,0 +1,67 @@
+name: Build and Release Skill ZIP
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # SKILL.md + docs/ + scripts/ を fivem-resources-dev-reference/ フォルダ構造で ZIP 化
+      # 展開先: .copilot\skills\ → .copilot\skills\fivem-resources-dev-reference\ が生成される
+      - name: Create skill ZIP
+        run: |
+          mkdir -p build/fivem-resources-dev-reference
+          cp SKILL.md build/fivem-resources-dev-reference/
+          cp -r docs    build/fivem-resources-dev-reference/
+          cp -r scripts build/fivem-resources-dev-reference/
+          cd build
+          zip -r ../fivem-resources-dev-reference-skill.zip fivem-resources-dev-reference/
+
+      # 既存の latest リリース・タグを削除（ローリング latest 方式）
+      - name: Delete existing latest release
+        run: gh release delete latest --yes 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete existing latest tag
+        run: git push --delete origin latest 2>/dev/null || true
+
+      # 新しい latest リリースを作成して ZIP をアップロード
+      - name: Create latest release
+        run: |
+          gh release create latest \
+            --title "Latest" \
+            --notes "$(cat <<'EOF'
+          main ブランチへのコミット時に自動生成されます。
+
+          ## GitHub Copilot スキルのインストール方法
+
+          1. `fivem-resources-dev-reference-skill.zip` をダウンロード
+          2. `%USERPROFILE%\.copilot\skills\` に展開する
+             ```
+             Expand-Archive fivem-resources-dev-reference-skill.zip "$env:USERPROFILE\.copilot\skills\"
+             ```
+          3. VS Code を再起動する
+
+          展開後の構成:
+          ```
+          .copilot\skills\fivem-resources-dev-reference\
+          ├── SKILL.md
+          ├── docs\...
+          └── scripts\
+              └── fetch-repo.ps1
+          ```
+          EOF
+          )" \
+            fivem-resources-dev-reference-skill.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

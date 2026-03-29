@@ -1,0 +1,2 @@
+# fetch-repo.ps1 でクローンしたソースコードは追跡しない
+temp_repos/
