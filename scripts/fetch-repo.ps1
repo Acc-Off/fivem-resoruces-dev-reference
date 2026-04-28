@@ -51,6 +51,12 @@ $Repos = [ordered]@{
         Description = 'MPS 統合版テンプレート (React + TS + ox_lib + DB)'
     }
 
+    # ── Editable files for LB's FiveM scripts ───────────────────────────────────
+    'lb-phone'                     = @{
+        Url         = 'https://github.com/lbphone/files'
+        Description = 'LBのFiveMスクリプト用の編集可能なファイル一式'
+    }
+
     # ── lb-phone カスタムアプリ実装例 ───────────────────────────────────
     'bs_laymo'                     = @{
         Url         = 'https://github.com/BeetleStudios/bs_laymo'

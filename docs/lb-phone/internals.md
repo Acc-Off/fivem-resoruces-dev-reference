@@ -1,6 +1,6 @@
 # lb-phone 内部構造
 
-lb-phone v2.6.0 の公開ファイル群を分析した内部構造メモです。  
+lb-phone v2.7.1 の公開ファイル群を分析した内部構造メモです。  
 カスタムアプリ開発において、lb-phoneがどう動いているかを理解するための参考情報です。
 
 > lb-phone本体は商用製品です。本ドキュメントはescrow暗号化を除いた公開ファイル部分の分析です。  
@@ -171,6 +171,30 @@ exports["lb-phone"]:RemoveCheck(checkId)
 ```
 
 サーバー側でも同様に `AddCheck` を使える（異なるイベント名が対象）。
+
+v2.7.1 で追加されたイベント:
+- `postMarketplace`: `fun(source, post: { title, description, attachments, price })`
+- `postPages`: `fun(source, post: { title, description, attachment?, price? })`
+
+---
+
+## SaltyChat 対応（voice.lua）
+
+v2.7.1 で SaltyChat の `SaltyChat_TalkStateChanged` イベントを受信し、`IsTalking()` およびカメラマイクのトグルに自動対応します。
+
+v2.7.1 で `SetCallMuted(muted, callId)` 関数も追加されました。これは `AddToCall`/`RemoveFromCall` をまとめて呼び出すユーティリティです。
+
+---
+
+## components.GameMap（v2.7.0+）
+
+`window.components.GameMap` として lb-phone の地図機能をカスタムアプリの DOM 要素に直接埋め込めるクラスが追加されました。  
+詳細は [グローバル UI API](global-ui-api.md#マップコンポーネントv270) を参照してください。
+
+`ui/dist/assets/` に以下のファイルが新たに追加されています：
+- `leaflet-*.js` — Leaflet 1.9.4（`GameMap` が動的にロード）
+- `leaflet-*.css` — Leaflet スタイルシート
+- `Maps-CX5VRGng.js` — React 向けマップコンポーネント（lb-phone 内部の Maps アプリが使用）
 
 ---
 

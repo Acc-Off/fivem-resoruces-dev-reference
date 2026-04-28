@@ -1,8 +1,8 @@
 # lb-phone 公式 API リファレンス
 
 > ソース: https://docs.lbscripts.com/phone/exports/  
-> バージョン: v2.6.0  
-> 最終確認: 2026-03-29
+> バージョン: v2.7.1  
+> 最終確認: 2026-04-28
 
 ---
 
@@ -101,6 +101,9 @@ exports["lb-phone"]:ToggleHomeIndicator(show)
 exports["lb-phone"]:ToggleLandscape(landscape)
 exports["lb-phone"]:ReloadPhone()
 exports["lb-phone"]:SetPhoneVariation(variation)
+
+-- 通話ミュート（SaltyChatを含む全ボイスシステム対応）
+exports["lb-phone"]:SetCallMuted(muted, callId)
 ```
 
 ### 通知
@@ -149,6 +152,9 @@ exports["lb-phone"]:SetAppHidden("app_identifier", true)
 exports["lb-phone"]:SetAppInstalled("app_identifier", true)
 exports["lb-phone"]:PostBirdy({ content = "投稿", attachments = {}, hashtags = {} })
 exports["lb-phone"]:AddContact({ number = "...", firstname = "John", lastname = "Doe" })
+-- v2.7.0 追加
+exports["lb-phone"]:UpdateContact({ number = "...", firstname = "Jane", lastname = "Doe" })
+exports["lb-phone"]:RemoveContact("01234567890")
 ```
 
 ### 電話発信
@@ -300,6 +306,7 @@ exports["lb-phone"]:AddContact(phoneNumber, {
 
 ```lua
 -- amount: 正=収入, 負=支出
+-- ※ 第3引数は v2.6.0 以前では company という名前だったが v2.7.1 で title に改名された
 exports["lb-phone"]:AddTransaction(phoneNumber, amount, title, image)
 ```
 
@@ -405,10 +412,14 @@ exports["lb-phone"]:BaseCallback("myapp:action", function(source, phoneNumber, .
 end)
 
 -- AddCheck（サーバー側バリデーション）
--- CheckEvent: "createDarkChatChannel" | "joinDarkChatChannel" | "sendDarkchatMessage"
---           | "startInstaPicLive" | "joinInstaPicLive" | "postInstaPicStory"
---           | "buyCrypto" | "sellCrypto" | "transferCrypto"
---           | "postInstaPic" | "postBirdy" | "postTrendy"
+-- CheckEvent（クライアント）: "openPhone" | "playNativePhoneSound"
+-- CheckEvent（サーバー）:
+--   "createDarkChatChannel" | "joinDarkChatChannel" | "sendDarkchatMessage"
+--   "startInstaPicLive" | "joinInstaPicLive" | "postInstaPicStory"
+--   "buyCrypto" | "sellCrypto" | "transferCrypto"
+--   "postInstaPic" | "postBirdy" | "postTrendy"
+--   "postMarketplace"  -- v2.7.1 追加: fun(source, post: { title, description, attachments, price })
+--   "postPages"        -- v2.7.1 追加: fun(source, post: { title, description, attachment?, price? })
 local id = exports["lb-phone"]:AddCheck("postBirdy", function(source, ...)
     return true
 end)
