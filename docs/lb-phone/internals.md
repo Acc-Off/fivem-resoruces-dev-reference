@@ -198,9 +198,39 @@ v2.7.1 で `SetCallMuted(muted, callId)` 関数も追加されました。これ
 
 ---
 
+## カスタムアプリ iframe の生成・注入・イベント発火（v2.8.2 で確認）
+
+カスタムアプリの UI が lb-phone 内でどう生成・初期化されるかの内部挙動。v2.8.2 のビルド済み JS（`AppProvider-*.js` / `index-n8LMBOiD.js`）を分析した内容。デバッグ時の混乱回避に重要。
+
+### iframe は2つ存在しうる
+
+同じ `cfx-nui-<resource>/ui/dist/index.html` が、状況により複数の iframe にロードされる:
+
+| iframe | DOM 上の位置 | サイズ | `window.name`（eval時） | lb-phone の注入 |
+|--------|-------------|--------|------------------------|----------------|
+| 表示用（本物） | `lb-phone` の中（`... > app-canister-<id> > app-content > iframe`） | スマホサイズ（例 414×904） | `''`（空） | される |
+| 裏（`ui_page` 由来と思われる） | FiveM root 直下 | 全画面（例 1920×1080） | リソース名が入る | されない |
+
+この2つは `window.name` で判別できる（表示用は空文字、裏はリソース名）。公式テンプレの `if (window.name === '' || devMode)` 描画ガードは、この判別で裏 iframe での描画を避けている。
+
+**デバッグ時の注意:** 両者は URL が同一なため DevTools のフレーム選択で区別できない。表示されていない裏 iframe を掴むと「`fetchNui` が undefined」「注入が来ない」と*見える*が、それは観測ミス。**`visible`（offsetWidth/Height）とサイズ、または `window.name` で本物を特定する**こと。また親フレームから別オリジンの子 `contentWindow` を覗くと、例外を投げず静かに falsy/空を返す（クロスオリジンの観測アーティファクト）ため、必ずそのフレーム自身のコンテキストで評価する。
+
+### 注入と componentsLoaded の機序
+
+- lb-phone はカスタムアプリ iframe の **`onLoad` ハンドラ内**で、`iframe.contentDocument.body` に `<script>` を `appendChild` して `globalThis.fetchNui` / `components` / `resourceName` 等を注入する（`contentDocument.body` が無ければ何もせず return・リトライなし。ただし通常の load 時点では body は存在し注入は成功する）。
+- 注入されたスクリプトは iframe 内で `setTimeout(() => postMessage('componentsLoaded','*'), 250)` を実行する。**つまり `componentsLoaded` は「注入が走った」自己発火シグナル**であり、表示用 iframe にはアプリを開くたびに毎回届く（iframe は開くたびに新規生成され `script eval` から再実行される）。裏 iframe には届かない。
+- `appOpen` / `appClose` は lb-phone が onUse / onClose 契機で iframe へ送る別経路の postMessage。
+
+### v2.8.2 の既知の取りこぼし
+
+クライアント高負荷時（DevTools CPU 6x slowdown で高再現）、注入と `componentsLoaded` は届くのに **`appOpen` だけが届かない**ことがある。`appOpen` 単独を初期化トリガにしていると、その処理（初期データ取得など）が走らない。対策はUI側で組む（[Lua ↔ UI 通信パターン](lua-ui-communication.md) を参照）。lb-phone 本体側のタイミング/race と見られる。
+
+---
+
 ## 関連ドキュメント
 
 - [lb-phone公式API リファレンス](api-reference.md)
+- [Lua ↔ UI 通信パターン](lua-ui-communication.md)
 - [参照リポジトリ一覧](../../SOURCES.md)
 
 ### 参考リポジトリ（アップロード関連）

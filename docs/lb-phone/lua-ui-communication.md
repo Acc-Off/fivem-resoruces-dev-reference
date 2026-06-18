@@ -137,6 +137,40 @@ if (devMode) {
 body { visibility: hidden; }
 ```
 
+### ⚠️ 初期データ取得を appOpen / componentsLoaded の「単一イベント受信」に依存しない（v2.8.2）
+
+lb-phone がアプリ iframe に送る起動シグナルには複数あり、**負荷状況によって一部が取りこぼされる**ことが確認されている。単一イベントを唯一のトリガにすると、その処理（初期データ取得など）が走らず、UI は表示されるのに中身が初期化されない状態に陥る。
+
+- **正常時の順序:** `script eval` → `appOpen` → `componentsLoaded`
+- **v2.8.2 の異常時（クライアント高負荷で高再現。DevTools の CPU 6x slowdown で再現可）:**
+  `fetchNui` 等の注入と `componentsLoaded` は届くのに、**`appOpen` だけが届かない**。
+  （以前の v2.7.x には逆に、背景復帰時に `appOpen` は来るが注入と `componentsLoaded` が来ない事例もあった）
+
+このため初期化は次の原則で組むこと:
+
+1. **初期データは push（`SendCustomAppMessage`）依存にせず、UI 側から pull（`fetchNui` で `getBootstrap` 的なコールバック）して取得する。** push（`appOpen` 等に同梱）だけだと取りこぼし時に欠落する。
+2. **初期化トリガは複数を OR で待つ。** `appOpen` だけでなく `componentsLoaded` も初期化のきっかけにする（`componentsLoaded` は表示中の iframe には開くたびに必ず届く）。
+3. **トリガは取りこぼしに強い場所で受ける。** これらのシグナルは React マウント前（`componentsLoaded` は概ね 400ms 前後）に届くため、`useEffect` 等マウント後のリスナでは登録が間に合わず取りこぼす。`index.html` の**バンドル評価前のインライン `<script>`**（early-capture）でフラグを保持し、アプリ側はそのフラグを初期値として読むと確実。
+
+```html
+<!-- index.html : バンドルより前に張り、appOpen/componentsLoaded を取りこぼさず記録 -->
+<script>
+  window.__appOpen = false;
+  window.__componentsLoaded = false;
+  window.addEventListener('message', function (e) {
+    if (e.data === 'componentsLoaded') window.__componentsLoaded = true;
+    if (e.data && e.data.action === 'appOpen')  window.__appOpen = true;
+    if (e.data && e.data.action === 'appClose') window.__appOpen = false;
+  });
+</script>
+```
+
+```typescript
+// アプリ側：appOpen 取りこぼしでも componentsLoaded で初期化が成立する
+const initiallyOpen = Boolean(window.__appOpen) || Boolean(window.__componentsLoaded)
+// 以降に届く分は通常どおり message を購読して反映する
+```
+
 ---
 
 ## Client ↔ Server 通信
